@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Enums\DeliveryAttemptStatus;
 use App\Enums\InventoryStatus;
 use App\Enums\OrderStatus;
 use App\Models\InventoryItem;
@@ -19,6 +20,7 @@ class OrderDeliveryTest extends TestCase
     public function test_paid_order_receives_available_inventory_item(): void
     {
         $product = Product::factory()->create([
+            'sku' => 'KEY-CS2-PRIME',
             'price' => 1290,
             'currency' => 'RUB',
             'is_active' => true,
@@ -32,26 +34,40 @@ class OrderDeliveryTest extends TestCase
             'status' => OrderStatus::PAID,
         ]);
 
-        $item = InventoryItem::factory()->create([
+        $inventory = InventoryItem::factory()->create([
             'product_id' => $product->id,
             'status' => InventoryStatus::AVAILABLE,
             'order_id' => null,
         ]);
 
-        $deliveredItem = app(DeliveryService::class)->deliver($order);
+        $response = $this->postJson(
+            "/api/orders/{$order->public_id}/deliver"
+        );
 
-        $this->assertSame($item->id, $deliveredItem->id);
-
-        $this->assertDatabaseHas('inventory_items', [
-            'id' => $item->id,
-            'product_id' => $product->id,
-            'status' => InventoryStatus::DELIVERED->value,
-            'order_id' => $order->id,
-        ]);
+        $response
+            ->assertOk()
+            ->assertJson([
+                'status' => 'delivered',
+                'code' => $inventory->code,
+            ]);
 
         $this->assertDatabaseHas('orders', [
             'id' => $order->id,
             'status' => OrderStatus::DELIVERED->value,
+        ]);
+
+        $this->assertDatabaseHas('inventory_items', [
+            'id' => $inventory->id,
+            'status' => InventoryStatus::DELIVERED->value,
+            'order_id' => $order->id,
+        ]);
+
+        $this->assertDatabaseHas('delivery_attempts', [
+            'order_id' => $order->id,
+            'provider' => 'inventory',
+            'status' => DeliveryAttemptStatus::SUCCESS->value,
+            'inventory_item_id' => $inventory->id,
+            'code' => $inventory->code,
         ]);
     }
 
@@ -115,5 +131,59 @@ class OrderDeliveryTest extends TestCase
         ]);
 
         $this->assertDatabaseCount('inventory_items', 2);
+    }
+
+    public function test_paid_order_can_be_delivered_through_api(): void
+    {
+        $product = Product::factory()->create([
+            'sku' => 'KEY-CS2-PRIME',
+            'price' => 1290,
+            'currency' => 'RUB',
+            'is_active' => true,
+        ]);
+
+        $order = Order::factory()->create([
+            'product_id' => $product->id,
+            'sku' => $product->sku,
+            'amount' => $product->price,
+            'currency' => $product->currency,
+            'status' => OrderStatus::PAID,
+        ]);
+
+        $inventory = InventoryItem::factory()->create([
+            'product_id' => $product->id,
+            'status' => InventoryStatus::AVAILABLE,
+            'order_id' => null,
+        ]);
+
+        $response = $this->postJson(
+            "/api/orders/{$order->public_id}/deliver"
+        );
+
+        $response
+            ->assertOk()
+            ->assertJson([
+                'status' => 'delivered',
+                'code' => $inventory->code,
+            ]);
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'status' => OrderStatus::DELIVERED->value,
+        ]);
+
+        $this->assertDatabaseHas('inventory_items', [
+            'id' => $inventory->id,
+            'status' => InventoryStatus::DELIVERED->value,
+            'order_id' => $order->id,
+        ]);
+
+        $this->assertDatabaseHas('delivery_attempts', [
+            'order_id' => $order->id,
+            'provider' => 'inventory',
+            'status' => DeliveryAttemptStatus::SUCCESS->value,
+            'inventory_item_id' => $inventory->id,
+            'code' => $inventory->code,
+        ]);
     }
 }

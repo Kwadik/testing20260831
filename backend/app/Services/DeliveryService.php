@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\DeliveryAttemptStatus;
 use App\Enums\InventoryStatus;
 use App\Enums\OrderStatus;
+use App\Models\DeliveryAttempt;
 use App\Models\InventoryItem;
 use App\Models\Order;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +43,15 @@ class DeliveryService
                 throw new RuntimeException('Product is out of stock.');
             }
 
+            $attempt = DeliveryAttempt::create([
+                'order_id' => $order->id,
+                'provider' => 'inventory',
+                'request_id' => (string) str()->uuid(),
+                'status' => DeliveryAttemptStatus::PROCESSING,
+                'inventory_item_id' => $item->id,
+                'started_at' => now(),
+            ]);
+
             $order->update([
                 'status' => OrderStatus::DELIVERING,
             ]);
@@ -56,6 +67,12 @@ class DeliveryService
 
             $order->update([
                 'status' => OrderStatus::DELIVERED,
+            ]);
+
+            $attempt->update([
+                'status' => DeliveryAttemptStatus::SUCCESS,
+                'code' => $item->code,
+                'finished_at' => now(),
             ]);
 
             return $item->fresh();
