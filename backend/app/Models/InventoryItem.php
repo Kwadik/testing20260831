@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use App\Enums\InventoryStatus;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class InventoryItem extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'product_id',
         'code',
