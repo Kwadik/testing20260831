@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Order extends Model
 {
@@ -44,7 +45,7 @@ class Order extends Model
         return $this->hasMany(DeliveryAttempt::class);
     }
 
-    public function inventoryItem()
+    public function inventoryItem(): HasOne
     {
         return $this->hasOne(InventoryItem::class);
     }

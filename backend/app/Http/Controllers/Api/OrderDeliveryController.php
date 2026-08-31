@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\IdempotencyKeyConflictException;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\DeliveryService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class OrderDeliveryController extends Controller
 {
@@ -14,11 +16,28 @@ class OrderDeliveryController extends Controller
     ) {
     }
 
-    public function deliver(string $publicId): JsonResponse
+    public function deliver(Request $request, string $publicId): JsonResponse
     {
         $order = Order::where('public_id', $publicId)->firstOrFail();
 
-        $inventory = $this->deliveryService->deliver($order);
+        $requestId = $request->header('Idempotency-Key');
+
+        if (! $requestId) {
+            return response()->json([
+                'message' => 'Idempotency-Key header is required.',
+            ], 422);
+        }
+
+        try {
+            $inventory = $this->deliveryService->deliver(
+                $order,
+                $requestId,
+            );
+        } catch (IdempotencyKeyConflictException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 409);
+        }
 
         return response()->json([
             'status' => 'delivered',
