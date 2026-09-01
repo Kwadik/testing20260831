@@ -12,12 +12,21 @@ services:
       - "8000:8000"
     environment:
       PHP_IDE_CONFIG: serverName=gamer-shop
+      APP_ENV: testing
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: gamer_shop_testing
+      DB_USERNAME: gamer_shop
+      DB_PASSWORD: gamer_shop
+      PHP_CLI_SERVER_WORKERS: 4
+      DELIVERY_CONCURRENCY_TEST_DELAY_MS: 2000
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: php artisan serve --host=0.0.0.0 --port=8000
+    command: php artisan serve --host=0.0.0.0 --port=8000 --no-reload
 
   postgres:
     image: postgres:17-alpine
