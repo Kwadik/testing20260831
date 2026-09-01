@@ -37,15 +37,9 @@ class DeliveryService
                  * It happens while the order row is locked, so a concurrent
                  * delivery request has to wait for this transaction to finish.
                  */
-                if (app()->environment('testing')) {
-                    $delayMs = (int) env(
-                        'DELIVERY_CONCURRENCY_TEST_DELAY_MS',
-                        0
-                    );
-
-                    if ($delayMs > 0) {
-                        usleep($delayMs * 1000);
-                    }
+                $delayMs = (int) config('delivery.concurrency_test_delay_ms', 0);
+                if ($delayMs > 0) {
+                    usleep($delayMs * 1000);
                 }
 
                 if ($order->status === OrderStatus::DELIVERED) {

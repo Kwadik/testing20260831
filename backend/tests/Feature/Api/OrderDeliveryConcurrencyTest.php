@@ -16,6 +16,16 @@ class OrderDeliveryConcurrencyTest extends TestCase
 {
     use DatabaseMigrations;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set(
+            'delivery.concurrency_test_delay_ms',
+            2000
+        );
+    }
+
     public function test_same_idempotency_key_is_safe_under_concurrency(): void
     {
         $product = Product::factory()->create();
