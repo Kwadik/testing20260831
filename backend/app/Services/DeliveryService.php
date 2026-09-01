@@ -6,6 +6,7 @@ use App\Enums\DeliveryAttemptStatus;
 use App\Enums\InventoryStatus;
 use App\Enums\OrderStatus;
 use App\Exceptions\IdempotencyKeyConflictException;
+use App\Exceptions\OrderNotReadyException;
 use App\Exceptions\OutOfStockException;
 use App\Models\DeliveryAttempt;
 use App\Models\InventoryItem;
@@ -52,7 +53,7 @@ class DeliveryService
                 }
 
                 if ($order->status !== OrderStatus::PAID) {
-                    throw new RuntimeException(
+                    throw new OrderNotReadyException(
                         'Order is not ready for delivery.'
                     );
                 }

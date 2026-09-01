@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Exceptions\IdempotencyKeyConflictException;
+use App\Exceptions\OrderNotReadyException;
 use App\Exceptions\OutOfStockException;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
@@ -34,7 +35,11 @@ class OrderDeliveryController extends Controller
                 $order,
                 $requestId,
             );
-        } catch (IdempotencyKeyConflictException|OutOfStockException $e) {
+        } catch (
+        IdempotencyKeyConflictException
+        | OutOfStockException
+        | OrderNotReadyException $e
+        ) {
             return response()->json([
                 'message' => $e->getMessage(),
             ], 409);
