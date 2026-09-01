@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Models\Order;
 use App\Models\PaymentEvent;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PaymentService
 {
@@ -29,34 +32,41 @@ class PaymentService
                 return;
             }
 
-            $order = Order::where('public_id', $data['order_id'])
+            $order = Order::query()
+                ->whereKey($order->id)
                 ->lockForUpdate()
-                ->first();
-
-            if (! $order) {
-                return;
-            }
+                ->firstOrFail();
 
             if (in_array($order->status, [
-                'delivered',
-                'payment_failed',
+                OrderStatus::DELIVERED,
+                OrderStatus::PAYMENT_FAILED,
             ], true)) {
                 return;
             }
-//            if ($order->isFinal()) {
-//                return;
-//            }
 
-            if ($data['status'] === 'paid') {
+            if (
+                $data['status'] === PaymentStatus::PAID->value
+                && (
+                    $order->amount !== $data['amount']
+                    || $order->currency !== $data['currency']
+                )
+            ) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Payment amount or currency does not match order.',
+                    'currency' => 'Payment amount or currency does not match order.',
+                ]);
+            }
+
+            if ($data['status'] === PaymentStatus::PAID->value) {
                 $order->update([
-                    'status' => 'paid',
+                    'status' => OrderStatus::PAID,
                 ]);
 
                 return;
             }
 
             $order->update([
-                'status' => 'payment_failed',
+                'status' => OrderStatus::PAYMENT_FAILED,
             ]);
         });
     }

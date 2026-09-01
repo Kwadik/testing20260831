@@ -402,4 +402,62 @@ class OrderDeliveryTest extends TestCase
             'status' => OrderStatus::PAID->value,
         ]);
     }
+
+    public function test_only_one_order_can_receive_the_same_inventory_item(): void
+    {
+        $product = Product::factory()->create();
+
+        $firstOrder = Order::factory()->create([
+            'product_id' => $product->id,
+            'sku' => $product->sku,
+            'amount' => $product->price,
+            'currency' => $product->currency,
+            'status' => OrderStatus::PAID,
+        ]);
+
+        $secondOrder = Order::factory()->create([
+            'product_id' => $product->id,
+            'sku' => $product->sku,
+            'amount' => $product->price,
+            'currency' => $product->currency,
+            'status' => OrderStatus::PAID,
+        ]);
+
+        $item = InventoryItem::factory()->create([
+            'product_id' => $product->id,
+            'status' => InventoryStatus::AVAILABLE,
+            'order_id' => null,
+        ]);
+
+        $firstResult = app(DeliveryService::class)->deliver(
+            $firstOrder,
+            'concurrent-delivery-001',
+        );
+
+        $this->assertSame($item->id, $firstResult->id);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Product is out of stock.');
+
+        app(DeliveryService::class)->deliver(
+            $secondOrder,
+            'concurrent-delivery-002',
+        );
+
+        $this->assertDatabaseHas('inventory_items', [
+            'id' => $item->id,
+            'status' => InventoryStatus::DELIVERED->value,
+            'order_id' => $firstOrder->id,
+        ]);
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $firstOrder->id,
+            'status' => OrderStatus::DELIVERED->value,
+        ]);
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $secondOrder->id,
+            'status' => OrderStatus::OUT_OF_STOCK->value,
+        ]);
+    }
 }

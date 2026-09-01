@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/orders', [OrderController::class, 'store']);
 
-Route::post('/payment/webhook', [PaymentWebhookController::class, 'handle']);
+Route::post('/payment/webhook', [PaymentWebhookController::class, 'handle'])
+    ->middleware('payment.webhook.signature');
 
 Route::post(
     '/orders/{publicId}/deliver',
