@@ -285,4 +285,58 @@ class PaymentWebhookTest extends TestCase
         $this->assertDatabaseMissing('payment_events', [
             'event_id' => 'evt_missing_signature',
         ]);
-    }}
+    }
+
+    public function test_same_event_id_cannot_be_used_for_another_order(): void
+    {
+        $product = Product::factory()->create();
+
+        $firstOrder = Order::factory()
+            ->forProduct($product)
+            ->create([
+                'status' => OrderStatus::CREATED,
+            ]);
+
+        $secondOrder = Order::factory()
+            ->forProduct($product)
+            ->create([
+                'status' => OrderStatus::CREATED,
+            ]);
+
+        $firstPayload = [
+            'event_id' => 'evt_reused',
+            'order_id' => $firstOrder->public_id,
+            'status' => PaymentStatus::PAID->value,
+            'amount' => $product->price,
+            'currency' => $product->currency,
+            'created_at' => now()->toISOString(),
+        ];
+
+        $this->postSignedWebhook($firstPayload)
+            ->assertOk();
+
+        $secondPayload = [
+            'event_id' => 'evt_reused',
+            'order_id' => $secondOrder->public_id,
+            'status' => PaymentStatus::PAID->value,
+            'amount' => $product->price,
+            'currency' => $product->currency,
+            'created_at' => now()->toISOString(),
+        ];
+
+        $this->postSignedWebhook($secondPayload)
+            ->assertStatus(422);
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $firstOrder->id,
+            'status' => OrderStatus::PAID->value,
+        ]);
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $secondOrder->id,
+            'status' => OrderStatus::CREATED->value,
+        ]);
+
+        $this->assertDatabaseCount('payment_events', 1);
+    }
+}

@@ -29,6 +29,12 @@ class PaymentService
             );
 
             if (! $event->wasRecentlyCreated) {
+                if ((int) $event->order_id !== (int) $order->id) {
+                    throw ValidationException::withMessages([
+                        'event_id' => 'This payment event has already been used for another order.',
+                    ]);
+                }
+
                 return;
             }
 
