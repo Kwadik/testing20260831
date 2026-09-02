@@ -20,7 +20,7 @@ class DeliveryAttemptFactory extends Factory
             'order_id' => Order::factory(),
             'provider' => 'inventory',
             'request_id' => fake()->uuid(),
-            'status' => DeliveryAttemptStatus::PENDING,
+            'status' => DeliveryAttemptStatus::PROCESSING,
             'inventory_item_id' => null,
             'code' => null,
             'error' => null,

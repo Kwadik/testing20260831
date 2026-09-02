@@ -15,6 +15,7 @@ class PaymentEvent extends Model
         'amount',
         'currency',
         'payload',
+        'event_created_at',
         'processed_at',
     ];
 
@@ -24,6 +25,7 @@ class PaymentEvent extends Model
             'status' => PaymentStatus::class,
             'amount' => 'integer',
             'payload' => 'array',
+            'event_created_at' => 'datetime',
             'processed_at' => 'datetime',
         ];
     }

@@ -229,10 +229,6 @@ class OrderDeliveryTest extends TestCase
             'order_id' => null,
         ]);
 
-        $headers = [
-            'Idempotency-Key' => 'delivery-request-001',
-        ];
-
         $this->postJson(
             "/api/orders/{$order->public_id}/deliver",
             [],
@@ -766,9 +762,18 @@ class OrderDeliveryTest extends TestCase
             'order_id' => null,
         ]);
 
+        $order->refresh();
+
         $order->update([
             'status' => OrderStatus::PAID,
         ]);
+//
+//        dump([
+//            'order_model_after_update' => $order->status?->value,
+//            'order_db_after_update' => Order::query()
+//                ->whereKey($order->id)
+//                ->value('status'),
+//        ]);
 
         $result = app(DeliveryService::class)->deliver(
             $order->fresh(),
@@ -834,6 +839,8 @@ class OrderDeliveryTest extends TestCase
             'status' => InventoryStatus::AVAILABLE,
             'order_id' => null,
         ]);
+
+        $order->refresh();
 
         $order->update([
             'status' => OrderStatus::PAID,

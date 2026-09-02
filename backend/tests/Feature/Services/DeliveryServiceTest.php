@@ -279,4 +279,42 @@ class DeliveryServiceTest extends TestCase
             'code' => $inventoryItem->code,
         ]);
     }
+
+    public function test_it_returns_already_delivered_inventory_for_new_idempotency_key(): void
+    {
+        $product = Product::factory()->create();
+
+        $order = Order::factory()
+            ->forProduct($product)
+            ->create([
+                'status' => OrderStatus::DELIVERED,
+            ]);
+
+        $item = InventoryItem::factory()->create([
+            'product_id' => $product->id,
+            'status' => InventoryStatus::DELIVERED,
+            'order_id' => $order->id,
+        ]);
+
+        $service = app(DeliveryService::class);
+
+        $result = $service->deliver(
+            $order,
+            'new-idempotency-key',
+        );
+
+        $this->assertSame($item->id, $result->id);
+
+        $this->assertDatabaseCount('inventory_items', 1);
+
+        $this->assertDatabaseCount('delivery_attempts', 1);
+
+        $this->assertDatabaseHas('delivery_attempts', [
+            'order_id' => $order->id,
+            'request_id' => 'new-idempotency-key',
+            'status' => DeliveryAttemptStatus::SUCCESS,
+            'inventory_item_id' => $item->id,
+            'code' => $item->code,
+        ]);
+    }
 }
