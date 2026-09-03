@@ -44,6 +44,9 @@ services:
       DB_DATABASE: gamer_shop_testing
       DB_USERNAME: gamer_shop
       DB_PASSWORD: gamer_shop
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
       QUEUE_CONNECTION: redis
     depends_on:
       postgres:
