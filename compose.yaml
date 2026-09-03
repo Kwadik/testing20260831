@@ -19,6 +19,7 @@ services:
       DB_DATABASE: gamer_shop_testing
       DB_USERNAME: gamer_shop
       DB_PASSWORD: gamer_shop
+      QUEUE_CONNECTION: redis
       PHP_CLI_SERVER_WORKERS: 4
     depends_on:
       postgres:
@@ -26,6 +27,30 @@ services:
       redis:
         condition: service_healthy
     command: php artisan serve --host=0.0.0.0 --port=8000 --no-reload
+
+  queue:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: gamer-shop-queue
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html
+    environment:
+      APP_ENV: testing
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: gamer_shop_testing
+      DB_USERNAME: gamer_shop
+      DB_PASSWORD: gamer_shop
+      QUEUE_CONNECTION: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: php artisan queue:work redis --sleep=1 --tries=3 --timeout=30
 
   postgres:
     image: postgres:17-alpine

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Jobs\DeliverOrderJob;
 use App\Models\Order;
 use App\Models\PaymentEvent;
 use Illuminate\Support\Carbon;
@@ -12,9 +13,9 @@ use Illuminate\Validation\ValidationException;
 
 class PaymentService
 {
-    public function handle(array $data): void
+    public function handle(array $data): bool
     {
-        DB::transaction(function () use ($data): void {
+        $shouldDeliver = DB::transaction(function () use ($data): bool {
             $order = Order::query()
                 ->where('public_id', $data['order_id'])
                 ->lockForUpdate()
@@ -30,7 +31,7 @@ class PaymentService
                     ->first();
 
                 if ($existingEvent !== null) {
-                    return;
+                    return false;
                 }
 
                 PaymentEvent::create([
@@ -40,11 +41,13 @@ class PaymentService
                     'amount' => $data['amount'],
                     'currency' => $data['currency'],
                     'payload' => $data,
-                    'event_created_at' => Carbon::parse($data['created_at']),
+                    'event_created_at' => Carbon::parse(
+                        $data['created_at'],
+                    ),
                     'processed_at' => null,
                 ]);
 
-                return;
+                return false;
             }
 
             /*
@@ -70,12 +73,9 @@ class PaymentService
                         'order_id' => $order->id,
                     ]);
                 } else {
-                    return;
+                    return false;
                 }
             } else {
-                /*
-                 * Validate paid amount/currency before storing the event.
-                 */
                 $this->validatePaidPayment($order, $data);
 
                 $event = PaymentEvent::create([
@@ -85,16 +85,18 @@ class PaymentService
                     'amount' => $data['amount'],
                     'currency' => $data['currency'],
                     'payload' => $data,
-                    'event_created_at' => Carbon::parse($data['created_at']),
+                    'event_created_at' => Carbon::parse(
+                        $data['created_at'],
+                    ),
                     'processed_at' => null,
                 ]);
             }
 
             /*
-             * Recalculate the order state from the newest payment event.
+             * Recalculate state from the newest payment event.
              *
-             * This prevents an older webhook that arrives later from
-             * overwriting a newer payment state.
+             * Because the order row is locked, concurrent webhooks for
+             * the same order are serialized here.
              */
             $latestEvent = PaymentEvent::query()
                 ->where('order_id', $order->id)
@@ -105,20 +107,42 @@ class PaymentService
                 ->first();
 
             if ($latestEvent === null) {
-                return;
+                return false;
             }
 
-            if ($latestEvent->status === PaymentStatus::PAID) {
-                $this->validatePaidEvent($order, $latestEvent);
+            $previousStatus = $order->status;
 
-                if ($order->status !== OrderStatus::DELIVERED) {
+            if ($latestEvent->status === PaymentStatus::PAID) {
+                $this->validatePaidEvent(
+                    $order,
+                    $latestEvent,
+                );
+
+                /*
+                 * Never move an order backwards from a delivery state.
+                 *
+                 * PAID may be restored from recoverable payment/delivery
+                 * states, but DELIVERING and DELIVERED must remain stable.
+                 */
+                if (in_array($order->status, [
+                    OrderStatus::CREATED,
+                    OrderStatus::PAYMENT_FAILED,
+                    OrderStatus::OUT_OF_STOCK,
+                    OrderStatus::DELIVERY_FAILED,
+                ], true)) {
                     $order->update([
                         'status' => OrderStatus::PAID,
                     ]);
                 }
             } else {
-                if (! in_array($order->status, [
-                    OrderStatus::DELIVERED,
+                /*
+                 * A failed event must not cancel an order that has already
+                 * entered delivery or has been successfully delivered.
+                 */
+                if (in_array($order->status, [
+                    OrderStatus::CREATED,
+                    OrderStatus::PAID,
+                    OrderStatus::PAYMENT_FAILED,
                 ], true)) {
                     $order->update([
                         'status' => OrderStatus::PAYMENT_FAILED,
@@ -129,11 +153,39 @@ class PaymentService
             $event->update([
                 'processed_at' => now(),
             ]);
+
+            /*
+             * Only a real transition into PAID starts delivery.
+             *
+             * This prevents 50 different paid events from scheduling
+             * 50 independent delivery operations.
+             */
+            return (
+                $previousStatus !== OrderStatus::PAID
+                && $previousStatus !== OrderStatus::DELIVERING
+                && $previousStatus !== OrderStatus::DELIVERED
+                && $order->status === OrderStatus::PAID
+            );
         });
+
+        if ($shouldDeliver) {
+            $orderId = Order::query()
+                ->where('public_id', $data['order_id'])
+                ->value('id');
+
+            if ($orderId !== null) {
+                DeliverOrderJob::dispatch($orderId)
+                    ->afterCommit();
+            }
+        }
+
+        return $shouldDeliver;
     }
 
-    private function validatePaidPayment(Order $order, array $data): void
-    {
+    private function validatePaidPayment(
+        Order $order,
+        array $data,
+    ): void {
         if (
             $data['status'] !== PaymentStatus::PAID->value
             || (
@@ -152,7 +204,7 @@ class PaymentService
 
     private function validatePaidEvent(
         Order $order,
-        PaymentEvent $event
+        PaymentEvent $event,
     ): void {
         if (
             $event->amount !== $order->amount

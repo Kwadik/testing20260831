@@ -30,7 +30,7 @@
         <env name="DB_USERNAME" value="gamer_shop"/>
         <env name="DB_PASSWORD" value="gamer_shop"/>
         <env name="MAIL_MAILER" value="array"/>
-        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="QUEUE_CONNECTION" value="redis"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
