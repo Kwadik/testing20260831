@@ -33,6 +33,8 @@ class OrderService
                 'status' => OrderStatus::CREATED,
             ]);
 
+            $shouldDeliver = false;
+
             $pendingEvent = PaymentEvent::query()
                 ->whereNull('order_id')
                 ->whereNull('processed_at')
@@ -71,6 +73,11 @@ class OrderService
                     'order_id' => $order->id,
                     'processed_at' => now(),
                 ]);
+            }
+
+            if ($shouldDeliver) {
+                DeliverOrderJob::dispatch($order->id)
+                    ->afterCommit();
             }
 
             return $order->fresh();

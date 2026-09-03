@@ -25,6 +25,7 @@ class DeliveryService
     public function deliver(
         Order $order,
         string $requestId,
+        bool $allowDelivering = true,
     ): InventoryItem {
         /*
          * The delivery attempt is the idempotency record for this
@@ -34,7 +35,7 @@ class DeliveryService
          * return the already issued inventory item without calling
          * a provider again.
          */
-        $attempt = $this->getOrCreateAttempt(
+        [$attempt, $attemptWasCreated] = $this->getOrCreateAttempt(
             $order,
             $requestId,
         );
@@ -42,6 +43,7 @@ class DeliveryService
         if ($attempt->status === DeliveryAttemptStatus::SUCCESS) {
             return $attempt->inventoryItem()->firstOrFail();
         }
+
 
         /*
          * Read the current order state from the database.
@@ -53,6 +55,15 @@ class DeliveryService
         $currentOrder = Order::query()
             ->whereKey($order->id)
             ->firstOrFail();
+
+        $allowExistingAttemptToContinue =
+            ! $attemptWasCreated
+            && in_array($attempt->status, [
+                DeliveryAttemptStatus::PROCESSING,
+                DeliveryAttemptStatus::FAILED,
+                DeliveryAttemptStatus::TIMEOUT,
+            ], true)
+            && $currentOrder->status === OrderStatus::DELIVERING;
 
         /*
          * If the order was already delivered but this particular
@@ -84,7 +95,10 @@ class DeliveryService
          */
         if (
             $currentOrder->status !== OrderStatus::PAID
-            && $currentOrder->status !== OrderStatus::DELIVERING
+            && ! (
+                ($allowDelivering || $allowExistingAttemptToContinue)
+                && $currentOrder->status === OrderStatus::DELIVERING
+            )
         ) {
             $message = 'Order is not ready for delivery.';
 
@@ -97,6 +111,12 @@ class DeliveryService
             throw new OrderNotReadyException($message);
         }
 
+        $allowDeliveringForThisAttempt =
+            $allowDelivering || $allowExistingAttemptToContinue;
+
+        $wasPaidWhenDeliveryStarted =
+            $currentOrder->status === OrderStatus::PAID;
+
         /*
          * Short transaction only.
          *
@@ -104,7 +124,10 @@ class DeliveryService
          * transaction is open. Holding a row lock during a network
          * request would unnecessarily block concurrent requests.
          */
-        DB::transaction(function () use ($order): void {
+        DB::transaction(function () use (
+            $order,
+            $wasPaidWhenDeliveryStarted,
+        ): void {
             $lockedOrder = Order::query()
                 ->whereKey($order->id)
                 ->lockForUpdate()
@@ -115,17 +138,22 @@ class DeliveryService
             }
 
             if (
-                $lockedOrder->status !== OrderStatus::PAID
-                && $lockedOrder->status !== OrderStatus::DELIVERING
+                $wasPaidWhenDeliveryStarted
+                && in_array($lockedOrder->status, [
+                    OrderStatus::PAID,
+                    OrderStatus::DELIVERING,
+                ], true)
             ) {
-                throw new OrderNotReadyException(
-                    'Order is not ready for delivery.'
-                );
+                $lockedOrder->update([
+                    'status' => OrderStatus::DELIVERING,
+                ]);
+
+                return;
             }
 
-            $lockedOrder->update([
-                'status' => OrderStatus::DELIVERING,
-            ]);
+            throw new OrderNotReadyException(
+                'Order is not ready for delivery.'
+            );
         });
 
         /*
@@ -229,14 +257,29 @@ class DeliveryService
 
             throw $e;
         } catch (OutOfStockException $e) {
-            /*
-             * Inventory exhaustion is recoverable.
-             */
-            DB::transaction(function () use ($order, $attempt, $e): void {
+            $deliveredItem = DB::transaction(function () use (
+                $order,
+                $attempt,
+                $e,
+            ): ?InventoryItem {
                 $lockedOrder = Order::query()
                     ->whereKey($order->id)
                     ->lockForUpdate()
                     ->firstOrFail();
+
+                if ($lockedOrder->status === OrderStatus::DELIVERED) {
+                    $item = $lockedOrder->inventoryItem()->firstOrFail();
+
+                    $attempt->update([
+                        'status' => DeliveryAttemptStatus::SUCCESS,
+                        'inventory_item_id' => $item->id,
+                        'code' => $item->code,
+                        'finished_at' => now(),
+                        'error' => null,
+                    ]);
+
+                    return $item;
+                }
 
                 $lockedOrder->update([
                     'status' => OrderStatus::OUT_OF_STOCK,
@@ -247,7 +290,13 @@ class DeliveryService
                     'finished_at' => now(),
                     'error' => $e->getMessage(),
                 ]);
+
+                return null;
             });
+
+            if ($deliveredItem !== null) {
+                return $deliveredItem;
+            }
 
             throw $e;
         } catch (\Throwable $e) {
@@ -280,7 +329,7 @@ class DeliveryService
     private function getOrCreateAttempt(
         Order $order,
         string $requestId,
-    ): DeliveryAttempt {
+    ): array {
         $attempt = DeliveryAttempt::query()
             ->where('request_id', $requestId)
             ->first();
@@ -292,24 +341,20 @@ class DeliveryService
                 );
             }
 
-            return $attempt;
+            return [$attempt, false];
         }
 
         try {
-            return DeliveryAttempt::query()->create([
+            $attempt = DeliveryAttempt::query()->create([
                 'order_id' => $order->id,
                 'provider' => 'inventory',
                 'request_id' => $requestId,
                 'status' => DeliveryAttemptStatus::PROCESSING,
                 'started_at' => now(),
             ]);
+
+            return [$attempt, true];
         } catch (QueryException $e) {
-            /*
-             * Another concurrent request may have inserted the same
-             * idempotency key between our SELECT and INSERT.
-             *
-             * PostgreSQL unique constraint is the source of truth.
-             */
             if ($e->getCode() !== '23505') {
                 throw $e;
             }
@@ -324,7 +369,7 @@ class DeliveryService
                 );
             }
 
-            return $attempt;
+            return [$attempt, false];
         }
     }
 }

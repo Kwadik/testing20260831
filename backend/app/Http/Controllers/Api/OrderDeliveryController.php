@@ -34,6 +34,7 @@ class OrderDeliveryController extends Controller
             $inventory = $this->deliveryService->deliver(
                 $order,
                 $requestId,
+                allowDelivering: false,
             );
         } catch (
         IdempotencyKeyConflictException
