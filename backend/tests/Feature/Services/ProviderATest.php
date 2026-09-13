@@ -6,12 +6,12 @@ use App\Models\InventoryItem;
 use App\Models\Order;
 use App\Models\Product;
 use App\Services\Delivery\ProviderA;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ProviderATest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_same_request_id_returns_same_code(): void
     {

@@ -162,7 +162,9 @@ PHP);
                 ]
             );
         } finally {
-            Artisan::call('migrate');
+            Artisan::call('migrate:fresh', [
+                '--force' => true,
+            ]);
         }
     }
 }
