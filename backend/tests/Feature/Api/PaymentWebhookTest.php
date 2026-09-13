@@ -4,10 +4,12 @@ namespace Tests\Feature\Api;
 
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Jobs\DeliverOrderJob;
 use App\Models\Order;
 use App\Models\Product;
 use App\Services\OrderService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -489,5 +491,77 @@ class PaymentWebhookTest extends TestCase
         ]);
 
         $this->assertDatabaseCount('payment_events', 1);
+    }
+
+    public function test_newer_paid_pending_event_wins_when_order_is_created(): void
+    {
+        $product = Product::factory()->create([
+            'sku' => 'STEAM-TEST-500',
+            'price' => 500,
+            'currency' => 'USD',
+        ]);
+
+        $orderPublicId = (string) Str::uuid();
+
+        $this->postSignedWebhook([
+            'event_id' => 'evt-old-failed',
+            'order_id' => $orderPublicId,
+            'status' => 'failed',
+            'amount' => 500,
+            'currency' => 'USD',
+            'created_at' => '2026-01-01T10:00:00Z',
+        ])->assertOk();
+
+        $this->postSignedWebhook([
+            'event_id' => 'evt-new-paid',
+            'order_id' => $orderPublicId,
+            'status' => 'paid',
+            'amount' => 500,
+            'currency' => 'USD',
+            'created_at' => '2026-01-01T11:00:00Z',
+        ])->assertOk();
+
+        $order = app(OrderService::class)->create(
+            $product->sku,
+            $orderPublicId,
+        );
+
+        $this->assertSame(OrderStatus::PAID, $order->status);
+    }
+
+    public function test_newer_failed_pending_event_wins_when_order_is_created(): void
+    {
+        $product = Product::factory()->create([
+            'sku' => 'STEAM-TEST-500',
+            'price' => 500,
+            'currency' => 'USD',
+        ]);
+
+        $orderPublicId = (string) Str::uuid();
+
+        $this->postSignedWebhook([
+            'event_id' => 'evt-old-paid',
+            'order_id' => $orderPublicId,
+            'status' => 'paid',
+            'amount' => 500,
+            'currency' => 'USD',
+            'created_at' => '2026-01-01T10:00:00Z',
+        ])->assertOk();
+
+        $this->postSignedWebhook([
+            'event_id' => 'evt-new-failed',
+            'order_id' => $orderPublicId,
+            'status' => 'failed',
+            'amount' => 500,
+            'currency' => 'USD',
+            'created_at' => '2026-01-01T11:00:00Z',
+        ])->assertOk();
+
+        $order = app(OrderService::class)->create(
+            $product->sku,
+            $orderPublicId,
+        );
+
+        $this->assertSame(OrderStatus::PAYMENT_FAILED, $order->status);
     }
 }

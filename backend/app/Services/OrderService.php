@@ -38,10 +38,9 @@ class OrderService
             $pendingEvent = PaymentEvent::query()
                 ->whereNull('order_id')
                 ->whereNull('processed_at')
-                ->whereRaw(
-                    "payload->>'order_id' = ?",
-                    [$order->public_id],
-                )
+                ->whereRaw("payload->>'order_id' = ?", [$order->public_id])
+                ->orderByDesc('event_created_at')
+                ->orderByDesc('id')
                 ->lockForUpdate()
                 ->first();
 
