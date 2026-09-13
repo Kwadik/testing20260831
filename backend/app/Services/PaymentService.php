@@ -7,6 +7,7 @@ use App\Enums\PaymentStatus;
 use App\Jobs\DeliverOrderJob;
 use App\Models\Order;
 use App\Models\PaymentEvent;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -34,18 +35,30 @@ class PaymentService
                     return false;
                 }
 
-                PaymentEvent::create([
-                    'event_id' => $data['event_id'],
-                    'order_id' => null,
-                    'status' => $data['status'],
-                    'amount' => $data['amount'],
-                    'currency' => $data['currency'],
-                    'payload' => $data,
-                    'event_created_at' => Carbon::parse(
-                        $data['created_at'],
-                    ),
-                    'processed_at' => null,
-                ]);
+                try {
+                    PaymentEvent::create([
+                        'event_id' => $data['event_id'],
+                        'order_id' => null,
+                        'status' => $data['status'],
+                        'amount' => $data['amount'],
+                        'currency' => $data['currency'],
+                        'payload' => $data,
+                        'event_created_at' => Carbon::parse(
+                            $data['created_at'],
+                        ),
+                        'processed_at' => null,
+                    ]);
+                } catch (QueryException $e) {
+                    if ($e->getCode() !== '23505') {
+                        throw $e;
+                    }
+
+                    /*
+                     * Another concurrent webhook already stored this event.
+                     * The event_id is the idempotency key, so this request is done.
+                     */
+                    return false;
+                }
 
                 return false;
             }
