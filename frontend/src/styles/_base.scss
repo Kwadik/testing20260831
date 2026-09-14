@@ -1,0 +1,25 @@
+@use './variables' as *;
+
+html {
+  font-family: $font-family-base;
+  color: $color-text;
+  background: $color-background;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  background: $color-background;
+  color: $color-text;
+}
+
+button,
+a,
+input {
+  transition:
+          color $transition-base,
+          background-color $transition-base,
+          border-color $transition-base,
+          box-shadow $transition-base,
+          transform $transition-base;
+}
