@@ -14,3 +14,8 @@ Route::post(
     '/orders/{publicId}/deliver',
     [OrderDeliveryController::class, 'deliver']
 );
+
+Route::post(
+    '/orders/{publicId}/retry-delivery',
+    [OrderDeliveryController::class, 'retryDelivery']
+);
