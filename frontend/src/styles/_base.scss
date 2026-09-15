@@ -1,4 +1,5 @@
 @use './variables' as *;
+@use './mixins' as *;
 
 html {
   font-family: $font-family-base;
@@ -13,13 +14,48 @@ body {
   color: $color-text;
 }
 
+#app {
+  min-height: inherit;
+
+  & > .page {
+    @include container;
+
+    min-height: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background: $color-page-background;
+
+    &>section {
+      padding-left: $container-padding;
+      padding-right: $container-padding;
+    }
+  }
+}
+
 button,
 a,
 input {
+  border: none;
+  outline: none;
   transition:
           color $transition-base,
           background-color $transition-base,
           border-color $transition-base,
           box-shadow $transition-base,
           transform $transition-base;
+}
+
+.button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: $color-primary;
+  border-radius: $radius-base;
+  color: $color-surface;
+
+  &:hover {
+    background: $color-primary-hover;
+  }
 }

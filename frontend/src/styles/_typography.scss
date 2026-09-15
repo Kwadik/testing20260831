@@ -1,8 +1,8 @@
 @use './variables' as *;
 
 body {
-  font-size: $font-size-md;
-  font-weight: $font-weight-regular;
+  font-size: $font-size;
+  font-weight: $font-weight-semibold;
   line-height: 1.5;
 }
 
@@ -10,6 +10,6 @@ h1,
 h2,
 h3,
 h4 {
-  font-weight: $font-weight-semibold;
-  line-height: 1.2;
+  font-weight: $font-weight-bold;
+  line-height: 1.5;
 }
