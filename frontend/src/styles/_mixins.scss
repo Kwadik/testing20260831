@@ -27,3 +27,11 @@
   white-space: nowrap;
   border: 0;
 }
+
+// Работа с текстом (Обрезание длинных строк)
+@mixin text-truncate($max-width: 100%) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: $max-width;
+}
