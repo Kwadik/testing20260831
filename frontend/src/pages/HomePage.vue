@@ -2,6 +2,7 @@
 import Header from '../components/Header.vue'
 import HeroBanner from '../components/HeroBanner.vue'
 import ServiceList from '../components/ServiceList.vue'
+import SteamTopUp from '../components/SteamTopUp.vue'
 </script>
 
 <template>
@@ -11,7 +12,7 @@ import ServiceList from '../components/ServiceList.vue'
     <section class="wrapper">
       <ServiceList />
       <div class="separator"></div>
-      <!--  <SteamTopUp />-->
+      <SteamTopUp />
     </section>
   </section>
 <!--  <ProductSection-->
