@@ -58,4 +58,14 @@ input {
   &:hover {
     background: $color-primary-hover;
   }
+
+  &-secondary {
+    color: $color-text;
+    background: $color-background;
+
+    &:hover {
+      background: $color-background;
+      color: $color-text;
+    }
+  }
 }

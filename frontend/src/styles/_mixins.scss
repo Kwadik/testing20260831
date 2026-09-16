@@ -35,3 +35,11 @@
   white-space: nowrap;
   max-width: $max-width;
 }
+
+// Работа с текстом (Обрезание длинных строк по N строкам)
+@mixin text-row-truncate($row: 3) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: $row;
+  overflow: hidden;
+}
