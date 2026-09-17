@@ -121,4 +121,35 @@ class OrderDeliveryController extends Controller
             'code' => $inventory->code,
         ]);
     }
+
+    public function paidNotDelivered(): JsonResponse
+    {
+        $orders = Order::query()
+            ->whereIn('status', [
+                OrderStatus::OUT_OF_STOCK,
+                OrderStatus::DELIVERY_FAILED,
+            ])
+            ->orderBy('id')
+            ->get([
+                'public_id',
+                'sku',
+                'amount',
+                'currency',
+                'status',
+                'created_at',
+            ]);
+
+        return response()->json([
+            'data' => $orders->map(static function (Order $order): array {
+                return [
+                    'id' => $order->public_id,
+                    'sku' => $order->sku,
+                    'amount' => $order->amount,
+                    'currency' => $order->currency,
+                    'status' => $order->status->value,
+                    'created_at' => $order->created_at?->toISOString(),
+                ];
+            })->values(),
+        ]);
+    }
 }

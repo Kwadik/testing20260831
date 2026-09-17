@@ -633,4 +633,91 @@ class OrderDeliveryControllerTest extends TestCase
             'status' => OrderStatus::DELIVERED->value,
         ]);
     }
+
+    public function test_admin_list_returns_paid_orders_that_were_not_delivered(): void
+    {
+        $product = Product::factory()->create();
+
+        $outOfStockOrder = Order::factory()
+            ->forProduct($product)
+            ->create([
+                'status' => OrderStatus::OUT_OF_STOCK,
+            ]);
+
+        $deliveryFailedOrder = Order::factory()
+            ->forProduct($product)
+            ->create([
+                'status' => OrderStatus::DELIVERY_FAILED,
+            ]);
+
+        Order::factory()
+            ->forProduct($product)
+            ->create([
+                'status' => OrderStatus::DELIVERED,
+            ]);
+
+        Order::factory()
+            ->forProduct($product)
+            ->create([
+                'status' => OrderStatus::CREATED,
+            ]);
+
+        $response = $this->getJson('/api/admin/orders/paid-not-delivered');
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonFragment([
+                'id' => $outOfStockOrder->public_id,
+                'sku' => $outOfStockOrder->sku,
+                'amount' => $outOfStockOrder->amount,
+                'currency' => $outOfStockOrder->currency,
+                'status' => OrderStatus::OUT_OF_STOCK->value,
+            ])
+            ->assertJsonFragment([
+                'id' => $deliveryFailedOrder->public_id,
+                'sku' => $deliveryFailedOrder->sku,
+                'amount' => $deliveryFailedOrder->amount,
+                'currency' => $deliveryFailedOrder->currency,
+                'status' => OrderStatus::DELIVERY_FAILED->value,
+            ]);
+    }
+
+    public function test_admin_list_does_not_return_delivered_or_unpaid_orders(): void
+    {
+        $product = Product::factory()->create();
+
+        $deliveredOrder = Order::factory()
+            ->forProduct($product)
+            ->create([
+                'status' => OrderStatus::DELIVERED,
+            ]);
+
+        $createdOrder = Order::factory()
+            ->forProduct($product)
+            ->create([
+                'status' => OrderStatus::CREATED,
+            ]);
+
+        $paymentFailedOrder = Order::factory()
+            ->forProduct($product)
+            ->create([
+                'status' => OrderStatus::PAYMENT_FAILED,
+            ]);
+
+        $response = $this->getJson('/api/admin/orders/paid-not-delivered');
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(0, 'data')
+            ->assertJsonMissing([
+                'id' => $deliveredOrder->public_id,
+            ])
+            ->assertJsonMissing([
+                'id' => $createdOrder->public_id,
+            ])
+            ->assertJsonMissing([
+                'id' => $paymentFailedOrder->public_id,
+            ]);
+    }
 }
