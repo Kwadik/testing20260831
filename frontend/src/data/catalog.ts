@@ -19,13 +19,6 @@ export const products: Product[] = [
         currency: 'RUB',
     },
     {
-        sku: 'STEAM-TOPUP-500',
-        name: 'Пополнение Steam 500 ₽',
-        type: 'topup',
-        price: 500,
-        currency: 'RUB',
-    },
-    {
         sku: 'STEAM-TOPUP-1000',
         name: 'Пополнение Steam 1000 ₽',
         type: 'topup',
