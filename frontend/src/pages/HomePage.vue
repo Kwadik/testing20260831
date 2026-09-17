@@ -6,6 +6,10 @@ import SteamTopUp from '../components/SteamTopUp.vue'
 import ProductSection from '../components/ProductSection.vue'
 import RecommendedProductSection from '../components/RecommendedProductSection.vue'
 import OtherProductSection from '../components/OtherProductSection.vue'
+
+const emit = defineEmits<{
+  orderCreated: [orderId: string]
+}>()
 </script>
 
 <template>
@@ -18,7 +22,7 @@ import OtherProductSection from '../components/OtherProductSection.vue'
       <SteamTopUp />
     </section>
   </section>
-  <ProductSection />
+  <ProductSection @order-created="emit('orderCreated', $event)" />
   <RecommendedProductSection />
   <OtherProductSection />
 </template>

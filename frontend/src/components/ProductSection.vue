@@ -2,6 +2,9 @@
 import ProductCard from '../components/ProductCard.vue'
 import {products} from "../data/catalog";
 
+const emit = defineEmits<{
+  orderCreated: [orderId: string]
+}>()
 </script>
 
 <template>
@@ -83,6 +86,7 @@ import {products} from "../data/catalog";
         v-for="product in products"
         :key="product.sku"
         :product="product"
+        @order-created="emit('orderCreated', $event)"
     />
   </div>
 </section>

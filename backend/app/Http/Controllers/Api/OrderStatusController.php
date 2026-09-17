@@ -24,6 +24,8 @@ class OrderStatusController extends Controller
             ->sortByDesc('id')
             ->first();
 
+        $isDelivered = $order->status->value === 'delivered';
+
         return response()->json([
             'data' => [
                 'id' => $order->public_id,
@@ -35,6 +37,9 @@ class OrderStatusController extends Controller
                     ? null
                     : [
                         'status' => $deliveryAttempt->status->value,
+                        'code' => $isDelivered
+                            ? $deliveryAttempt->code
+                            : null,
                     ],
             ],
         ]);
