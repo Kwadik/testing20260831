@@ -1,10 +1,14 @@
 # Gamer Shop
 
-Цифровой магазин игр на Laravel 13, PostgreSQL, Redis и Docker.
+Цифровой магазин игр на Laravel 13, PostgreSQL, Redis, Docker и Vue 3.
 
 Проект реализует автоматическую выдачу цифровых ключей после успешного webhook платежа, идемпотентную обработку платежей, защиту от конкурентных запросов, идемпотентность выдачи и восстановление после ошибок доставки.
 
+Frontend реализован на Vue 3 + TypeScript + Vite и содержит основную страницу магазина по макету.
+
 ## Стек
+
+### Backend
 
 * PHP 8.4
 * Laravel 13
@@ -12,6 +16,13 @@
 * Redis 7
 * Docker Compose
 * PHPUnit / Laravel Testing
+
+### Frontend
+
+* Vue 3
+* TypeScript
+* Vite
+* SCSS
 
 ## Архитектура
 
@@ -22,18 +33,52 @@
 * `postgres` — PostgreSQL;
 * `redis` — очередь и cache.
 
-HTTP-приложение доступно на порту `8000`.
+Frontend находится в отдельной директории `frontend/` и запускается через Vite.
+
+HTTP-приложение Laravel доступно на порту `8000`.
+
+Frontend dev server по умолчанию доступен на порту `5173`.
+
+## Структура проекта
+
+```text
+/
+├── backend/
+│   ├── app/
+│   ├── database/
+│   ├── routes/
+│   └── tests/
+│
+├── frontend/
+│   ├── src/
+│   │   ├── api/
+│   │   ├── components/
+│   │   ├── data/
+│   │   │   └── catalog.ts
+│   │   ├── pages/
+│   │   ├── styles/
+│   │   ├── types/
+│   │   ├── App.vue
+│   │   └── main.ts
+│   ├── public/
+│   ├── package.json
+│   └── vite.config.ts
+│
+├── compose.yaml
+└── README.md
+```
 
 ## Требования
 
 Необходимы:
 
 * Docker;
-* Docker Compose.
+* Docker Compose;
+* Node.js и npm для разработки frontend.
 
 Локальная установка PHP, Composer, PostgreSQL и Redis не требуется.
 
-## Запуск проекта
+## Запуск backend
 
 Из корня репозитория:
 
@@ -47,13 +92,233 @@ docker compose up -d --build
 docker compose ps
 ```
 
-Приложение будет доступно по адресу:
+Laravel-приложение будет доступно по адресу:
 
 ```text
 http://localhost:8000
 ```
 
 Worker очереди запускается автоматически в контейнере `queue`.
+
+## Запуск frontend
+
+Перейти в директорию frontend:
+
+```bash
+cd frontend
+```
+
+Установить зависимости:
+
+```bash
+npm install
+```
+
+Запустить dev server:
+
+```bash
+npm run dev
+```
+
+Frontend будет доступен по адресу:
+
+```text
+http://localhost:5173
+```
+
+Production build:
+
+```bash
+npm run build
+```
+
+На текущем этапе production build frontend успешно собирается.
+
+## Frontend
+
+Основная задача frontend на текущем этапе — реализовать главную страницу магазина по предоставленному Figma-макету без pixel-perfect копирования.
+
+В рамках текущего этапа реализованы:
+
+* Header;
+* Catalog dropdown;
+* Hero/Banner;
+* Services;
+* Steam Top Up;
+* Popular Products;
+* Product Card;
+* базовая дизайн-система на SCSS;
+* типизированная модель товара на TypeScript.
+
+Отзывы и footer не требуются по текущему ТЗ и не реализуются.
+
+Mobile-версия, dark theme, полноценная авторизация, полноценный каталог, admin panel и реальный acquiring также не входят в текущий этап.
+
+## Интерактивность frontend
+
+Реализованы все пять интерактивных точек, предусмотренных ТЗ.
+
+### Hero carousel
+
+Поддерживает:
+
+* переключение стрелками;
+* переключение по dots;
+* автоматическое переключение слайдов;
+* несколько слайдов.
+
+### Catalog dropdown
+
+Поддерживает:
+
+* открытие по кнопке `Каталог`;
+* закрытие повторным нажатием;
+* закрытие при клике вне меню;
+* отображение структуры категорий согласно макету.
+
+### Currency switch
+
+В блоке Steam Top Up реализован переключатель:
+
+```text
+$ / ₸ / ₽
+```
+
+Переключатель меняет только активное состояние.
+
+Пересчёт стоимости между валютами по ТЗ не выполняется.
+
+Базовая цена товара хранится в RUB.
+
+### Service hover
+
+Для сервисов реализирован hover-state с визуальным изменением элемента.
+
+### Product card hover
+
+Карточки товаров имеют hover-state с плавным визуальным изменением, включая подъём и тень.
+
+## Каталог товаров
+
+На текущем frontend-этапе товары хранятся локально в:
+
+```text
+frontend/src/data/catalog.ts
+```
+
+Источник данных соответствует каталогу из ТЗ и существующему backend seeder.
+
+Тип товара:
+
+```ts
+type ProductType =
+    | 'topup'
+    | 'key'
+    | 'subscription'
+    | 'giftcard'
+```
+
+Валюта:
+
+```ts
+type ProductCurrency = 'RUB'
+```
+
+Модель товара:
+
+```ts
+interface Product {
+    sku: string
+    name: string
+    type: ProductType
+    price: number
+    currency: ProductCurrency
+    image?: string
+}
+```
+
+`image` является необязательным.
+
+Если изображение товара отсутствует, `ProductCard` использует дефолтное изображение.
+
+Это позволяет сейчас использовать повторяющееся изображение из макета, а в дальнейшем получать реальные изображения с backend без изменения интерфейса карточки.
+
+Текущий каталог содержит следующие товары:
+
+```text
+STEAM-TOPUP-500
+STEAM-TOPUP-1000
+STEAM-TOPUP-2500
+
+KEY-CS2-PRIME
+KEY-GTA5
+KEY-EFT
+
+SUB-DISCORD-1M
+SUB-YT-3M
+SUB-SPOTIFY-1M
+
+GIFT-PSN-1000
+GIFT-XBOX-1500
+GIFT-ROBLOX-800
+```
+
+Frontend-компоненты не завязаны на конкретный товар: `ProductSection` передаёт типизированный `Product` в `ProductCard`.
+
+В дальнейшем локальный `catalog.ts` может быть заменён на получение каталога через API.
+
+## SCSS и дизайн-система
+
+Frontend использует SCSS.
+
+Общие стили и design tokens находятся в:
+
+```text
+frontend/src/styles/
+```
+
+Основные файлы:
+
+```text
+_variables.scss
+_reset.scss
+_base.scss
+_typography.scss
+_mixins.scss
+main.scss
+```
+
+В variables вынесены:
+
+* цвета;
+* типографика;
+* spacing;
+* border radius;
+* shadows;
+* layout;
+* transitions.
+
+Компоненты используют локальные:
+
+```vue
+<style scoped lang="scss">
+```
+
+Общие UI-правила не дублируются между компонентами без необходимости.
+
+Подход к стилизации:
+
+```text
+Figma
+  ↓
+design tokens
+  ↓
+SCSS variables / mixins
+  ↓
+UI/component styles
+  ↓
+page styles
+```
 
 ## База данных
 
@@ -379,6 +644,8 @@ Services/ProviderBTest.php
 
 ## Полезные команды
 
+### Backend
+
 Запустить проект:
 
 ```bash
@@ -429,7 +696,23 @@ docker compose logs -f app
 docker compose logs -f queue
 ```
 
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Production build:
+
+```bash
+npm run build
+```
+
 ## Результаты проверки
+
+### Backend
 
 Последний запуск тестов контроллера и recovery:
 
@@ -455,6 +738,21 @@ git diff --check
 
 Git выводит только предупреждения о нормализации CRLF/LF для изменённых файлов.
 
+### Frontend
+
+Проверено:
+
+```bash
+npm install
+npm run build
+```
+
+Установка зависимостей проходит успешно.
+
+Production build проходит успешно.
+
+Основная страница frontend открывается через Vite dev server.
+
 ## Соответствие основным требованиям
 
 | Требование                 | Реализация                                   |
@@ -475,6 +773,54 @@ Git выводит только предупреждения о нормализ
 | Provider A/B               | Реализованы                                  |
 | Provider timeout           | Обрабатывается отдельно                      |
 | Queue                      | Redis + Laravel queue worker                 |
+| Frontend главной страницы  | Реализован                                   |
+| Product catalog            | Реализован локальный типизированный каталог  |
+| Product cards              | Динамический вывод                           |
+| Hero carousel              | Реализован                                   |
+| Catalog dropdown           | Реализован                                   |
+| Currency switch            | Реализован                                   |
+| Service hover              | Реализован                                   |
+| Product card hover         | Реализован                                   |
+
+## Текущее состояние проекта
+
+На текущем этапе завершена верстка и базовая интерактивность главной страницы frontend.
+
+Реализованы все интерактивные точки из ТЗ.
+
+Каталог товаров пока используется локально из `frontend/src/data/catalog.ts`.
+
+Backend API создания заказа уже реализован и покрыт тестами.
+
+### Следующий этап
+
+Следующий этап — связать frontend с существующим backend API и реализовать минимальный purchase flow для одного товара:
+
+```text
+ProductCard
+    ↓
+Купить
+    ↓
+POST /api/orders
+    ↓
+Order created
+    ↓
+Оплатить
+    ↓
+Payment webhook stub
+    ↓
+Order paid
+    ↓
+Automatic delivery
+    ↓
+Order delivered
+    ↓
+Order status page
+```
+
+Реальный acquiring/payment provider на frontend не реализуется.
+
+Первый этап purchase flow должен работать хотя бы для одного товара.
 
 ## Ключевой принцип exactly-once
 
@@ -492,18 +838,32 @@ docker compose exec app php artisan migrate
 docker compose exec app php artisan test
 ```
 
-Ожидаемый результат текущей версии:
+Для frontend:
+
+```bash
+cd frontend
+npm install
+npm run build
+```
+
+Ожидаемый результат backend текущей версии:
 
 ```text
 75 passed
 438 assertions
 ```
 
-## Ссылка на репозиторий
+Ожидаемый результат frontend:
 
 ```text
-TODO: добавить URL репозитория
+npm run build
 ```
+
+завершается успешно.
+
+## Ссылка на репозиторий
+
+https://github.com/Kwadik/testing20260831
 
 ## Live-приложение
 
@@ -516,3 +876,4 @@ TODO: добавить URL работающего приложения, если
 ```text
 TODO: указать фактическое затраченное время
 ```
+
