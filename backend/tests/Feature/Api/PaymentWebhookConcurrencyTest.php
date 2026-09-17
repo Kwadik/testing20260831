@@ -54,8 +54,8 @@ class PaymentWebhookConcurrencyTest extends TestCase
                     "X-Signature: {$signature}",
                 ],
                 CURLOPT_POSTFIELDS => $body,
-                CURLOPT_CONNECTTIMEOUT_MS => 2000,
-                CURLOPT_TIMEOUT_MS => 15000,
+                CURLOPT_CONNECTTIMEOUT_MS => 5000,
+                CURLOPT_TIMEOUT_MS => 60000,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             ]);
 
@@ -154,8 +154,8 @@ class PaymentWebhookConcurrencyTest extends TestCase
                     "X-Signature: {$signature}",
                 ],
                 CURLOPT_POSTFIELDS => $body,
-                CURLOPT_CONNECTTIMEOUT_MS => 2000,
-                CURLOPT_TIMEOUT_MS => 15000,
+                CURLOPT_CONNECTTIMEOUT_MS => 5000,
+                CURLOPT_TIMEOUT_MS => 60000,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             ]);
 

@@ -44,6 +44,16 @@ class DeliveryService
             return $attempt->inventoryItem()->firstOrFail();
         }
 
+        if (
+            ! $attemptWasCreated
+            && $attempt->status === DeliveryAttemptStatus::PROCESSING
+        ) {
+            $attempt = $this->waitForExistingAttempt($attempt);
+
+            if ($attempt->status === DeliveryAttemptStatus::SUCCESS) {
+                return $attempt->inventoryItem()->firstOrFail();
+            }
+        }
 
         /*
          * Read the current order state from the database.
@@ -371,5 +381,26 @@ class DeliveryService
 
             return [$attempt, false];
         }
+    }
+
+    private function waitForExistingAttempt(
+        DeliveryAttempt $attempt,
+    ): DeliveryAttempt {
+        $maxAttempts = 100;
+        $sleepMicroseconds = 50_000;
+
+        for ($i = 0; $i < $maxAttempts; $i++) {
+            usleep($sleepMicroseconds);
+
+            $freshAttempt = DeliveryAttempt::query()
+                ->whereKey($attempt->id)
+                ->firstOrFail();
+
+            if ($freshAttempt->status !== DeliveryAttemptStatus::PROCESSING) {
+                return $freshAttempt;
+            }
+        }
+
+        return $attempt->fresh();
     }
 }

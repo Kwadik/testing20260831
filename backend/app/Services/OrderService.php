@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\OrderStatus;
+use App\Jobs\DeliverOrderJob;
 use App\Models\Order;
 use App\Models\PaymentEvent;
 use App\Models\Product;
@@ -62,6 +63,7 @@ class OrderService
                     $order->update([
                         'status' => OrderStatus::PAID,
                     ]);
+                    $shouldDeliver = true;
                 } else {
                     $order->update([
                         'status' => OrderStatus::PAYMENT_FAILED,
