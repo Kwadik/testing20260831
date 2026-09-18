@@ -869,15 +869,15 @@ npm run build
 
 ### 2 шаг
 
-В файле TESTING_STEP_2.md
+[В отдельной инструкции TESTING_STEP_2.md](TESTING_STEP_2.md)
 
 ### 3 шаг
 
-В файле TESTING_STEP_3.md
+[В отдельной инструкции TESTING_STEP_3.md](TESTING_STEP_3.md)
 
 ### 3 шаг
 
-В файле TESTING_STEP_4.md
+[В отдельной инструкции TESTING_STEP_4.md](TESTING_STEP_4.md)
 
 ## Ссылка на репозиторий
 
@@ -892,8 +892,4 @@ https://github.com/Kwadik/testing20260831
 ## Фактическое время разработки
 
 Проектирование, верстка, тесты (основное время заняло) можно оценить в 5 рабочих дней
-
-```text
-TODO: указать фактическое затраченное время
-```
 
