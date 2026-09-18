@@ -19,7 +19,7 @@ const emit = defineEmits<{
     <section class="wrapper">
       <ServiceList />
       <div class="separator"></div>
-      <SteamTopUp />
+      <SteamTopUp @order-created="emit('orderCreated', $event)" />
     </section>
   </section>
   <ProductSection @order-created="emit('orderCreated', $event)" />

@@ -63,3 +63,46 @@ export async function getOrder(orderId: string): Promise<OrderStatusResponse> {
 
     return response.json()
 }
+
+export interface CreateSteamTopUpRequest {
+    amount: number
+    currency: string
+    promo_code?: string
+}
+
+export interface CreateSteamTopUpResponse {
+    data: {
+        id: string
+        status: string
+        sku: string
+        amount: number
+        currency: string
+        promo_code: string | null
+        discount_amount: number
+    }
+}
+
+export async function createSteamTopUp(
+    payload: CreateSteamTopUpRequest,
+): Promise<CreateSteamTopUpResponse> {
+    const response = await fetch('/api/steam-topups', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+        const data = await response.json().catch(() => null)
+
+        throw new Error(
+            data?.errors?.promo_code?.[0]
+            ?? data?.message
+            ?? 'Не удалось создать заказ на пополнение Steam.',
+        )
+    }
+
+    return response.json()
+}

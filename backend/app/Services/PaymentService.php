@@ -174,7 +174,8 @@ class PaymentService
              * 50 independent delivery operations.
              */
             return (
-                $previousStatus !== OrderStatus::PAID
+                $order->sku !== 'STEAM-TOPUP'
+                && $previousStatus !== OrderStatus::PAID
                 && $previousStatus !== OrderStatus::DELIVERING
                 && $previousStatus !== OrderStatus::DELIVERED
                 && $order->status === OrderStatus::PAID

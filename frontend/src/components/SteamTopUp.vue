@@ -1,10 +1,50 @@
 <script setup lang="ts">
-
 import { ref } from 'vue'
+import { createSteamTopUp } from '../api/orders'
 
-const currencies = ['$', '₸', '₽']
-const activeCurrency = ref('$')
+const emit = defineEmits<{
+  orderCreated: [orderId: string]
+}>()
 
+const currencies = [
+  { symbol: '$', code: 'USD' },
+  { symbol: '₸', code: 'KZT' },
+  { symbol: '₽', code: 'RUB' },
+]
+
+const activeCurrency = ref(currencies[2])
+
+const amount = ref(500)
+const promoCode = ref('')
+const isPromoOpen = ref(false)
+const isLoading = ref(false)
+const errorMessage = ref('bad')
+
+async function submitTopUp(): Promise<void> {
+  if (isLoading.value) {
+    return
+  }
+
+  errorMessage.value = ''
+  isLoading.value = true
+
+  try {
+    const response = await createSteamTopUp({
+      amount: amount.value,
+      currency: activeCurrency.value.code,
+      promo_code: promoCode.value.trim() || undefined,
+    })
+
+    emit('orderCreated', response.data.id)
+  } catch (error) {
+    errorMessage.value =
+        error instanceof Error
+            ? error.message
+            : 'Не удалось создать заказ.'
+  } finally {
+    isLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -20,11 +60,40 @@ const activeCurrency = ref('$')
         </div>
         <div class="promocode-field">
           <div class="dropdown">
-            <div class="dropdown-trigger">
-              Ввести промокод
-              <svg width="8" height="5" viewBox="0 0 8 5" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M0.75 0.75L3.75 3.75L6.75 0.75" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <button
+                type="button"
+                class="dropdown-trigger"
+                :class="{'is-open': isPromoOpen}"
+                @click="isPromoOpen = !isPromoOpen"
+            >
+            <span>
+                {{ promoCode || 'Ввести промокод' }}
+            </span>
+
+              <svg
+                  width="12"
+                  height="7"
+                  viewBox="0 0 12 7"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                    d="M1 1L6 6L11 1"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                />
               </svg>
+            </button>
+
+            <div v-if="isPromoOpen" class="dropdown-menu">
+              <input
+                  v-model="promoCode"
+                  type="text"
+                  placeholder="Промокод"
+                  @keyup.enter="isPromoOpen = false"
+              />
             </div>
           </div>
         </div>
@@ -56,23 +125,38 @@ const activeCurrency = ref('$')
       </div>
       <div class="sum-value">
         <span class="label">Сумма</span>
-        <span class="value">500₽</span>
+        <input
+            v-model.number="amount"
+            class="value"
+            type="number"
+            min="1"
+        />
       </div>
       <div class="currency">
         <button
             v-for="currency in currencies"
-            :key="currency"
+            :key="currency.code"
             type="button"
             class="currency-item"
-            :class="{ active: activeCurrency === currency }"
+            :class="{ active: activeCurrency.code === currency.code }"
             @click="activeCurrency = currency"
         >
-          {{ currency }}
+          {{ currency.symbol }}
         </button>
       </div>
     </div>
     <div class="submit">
-      <button type="button" class="button">Оплатить 500$</button>
+      <button
+          type="button"
+          class="button"
+          :disabled="isLoading"
+          @click="submitTopUp"
+      >
+        {{ isLoading ? 'Создание заказа...' : `Оплатить ${amount || 0}${activeCurrency.symbol}` }}
+      </button>
+      <p v-if="errorMessage" class="error-message">
+        {{ errorMessage }}
+      </p>
     </div>
   </div>
 </template>
@@ -139,10 +223,17 @@ const activeCurrency = ref('$')
       }
 
       .promocode-field {
+        position: relative;
+        height: 26px;
+
         .dropdown {
           padding: 4px 12px;
           background: #268bf31a;
           border-radius: $radius-small;
+          position: absolute;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
 
           &-trigger {
             display: flex;
@@ -151,6 +242,17 @@ const activeCurrency = ref('$')
             font-size: 12px;
             font-weight: 700;
             line-height: 18px;
+
+            span {
+              white-space: nowrap;
+            }
+          }
+
+          &-menu {
+            input {
+              border-radius: 4px;
+              max-width: 178px;
+            }
           }
         }
       }
@@ -243,6 +345,8 @@ const activeCurrency = ref('$')
       }
 
       .value {
+        background: transparent;
+        width: 100%;
         font-size: 18px;
         font-weight: 700;
         line-height: 18px;
@@ -290,6 +394,12 @@ const activeCurrency = ref('$')
       height: 100%;
       font-size: 16px;
       font-weight: 700;
+    }
+
+    .error-message {
+      position: absolute;
+      color: $color-error;
+      font-size: 10px;
     }
   }
 }

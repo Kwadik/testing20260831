@@ -5,11 +5,11 @@ use App\Http\Controllers\Api\OrderDeliveryController;
 use App\Http\Controllers\Api\OrderStatusController;
 use App\Http\Controllers\Api\PaymentSimulationController;
 use App\Http\Controllers\Api\PaymentWebhookController;
+use App\Http\Controllers\Api\SteamTopUpController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/payment/webhook', [PaymentWebhookController::class, 'handle'])
     ->middleware('payment.webhook.signature');
-
 
 Route::post('/orders', [OrderController::class, 'store']);
 Route::get('/orders/{publicId}', [OrderStatusController::class, 'show']);
@@ -23,3 +23,5 @@ Route::post(
     '/orders/{publicId}/retry-delivery',
     [OrderDeliveryController::class, 'retryDelivery']
 );
+
+Route::post('/steam-topups', [SteamTopUpController::class, 'store']);

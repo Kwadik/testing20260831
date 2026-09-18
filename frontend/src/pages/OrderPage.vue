@@ -22,7 +22,13 @@ async function loadOrder(): Promise<void> {
 
     order.value = response.data
 
-    if (response.data.status === 'delivered') {
+    if (
+        response.data.status === 'delivered'
+        || (
+            response.data.status === 'paid'
+            && response.data.sku === 'STEAM-TOPUP'
+        )
+    ) {
       stopPolling()
     }
   } catch (error) {
@@ -76,8 +82,12 @@ onMounted(async () => {
   await loadOrder()
 
   if (
-      order.value &&
-      order.value.status !== 'delivered'
+      order.value
+      && order.value.status !== 'delivered'
+      && !(
+          order.value.status === 'paid'
+          && order.value.sku === 'STEAM-TOPUP'
+      )
   ) {
     startPolling()
   }
@@ -136,6 +146,22 @@ onUnmounted(() => {
           >
             {{ isLoading ? 'Оплата...' : 'Оплатить' }}
           </button>
+
+          <div
+              v-else-if="
+                  order.status === 'paid'
+                  && order.sku === 'STEAM-TOPUP'
+              "
+              class="order-page__success"
+          >
+            <div class="order-page__success-title">
+              Пополнение оплачено
+            </div>
+
+            <div>
+              Steam Top Up на {{ order.amount }} {{ order.currency }} успешно оплачен.
+            </div>
+          </div>
 
           <div
               v-else-if="order.status === 'paid'"

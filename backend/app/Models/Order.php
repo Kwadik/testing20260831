@@ -20,12 +20,15 @@ class Order extends Model
         'amount',
         'currency',
         'status',
+        'promo_code',
+        'discount_amount',
     ];
 
     protected function casts(): array
     {
         return [
             'amount' => 'integer',
+            'discount_amount' => 'integer',
             'status' => OrderStatus::class,
         ];
     }
